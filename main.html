@@ -1,6 +1,6 @@
 <html>
 	<head>
-		<title>My first three.js app</title>
+		<title>AAAAAAAAaAaAaAaaAaaAaaaaaaaaa</title>
 		<style>
 			body { margin: 0; }
 			canvas { width: 100%; height: 100% }
@@ -25,7 +25,7 @@
 				var mesh = new THREE.Mesh( geometry, material );
 				mesh.position.set(pos.x, pos.y, 0);
 				scene.add( mesh );
-				objList.push({mesh:mesh,mass:mass,vel:vel,static:static});
+				objList.push({mesh:mesh,mass:mass,vel:vel,acc:null,static:static});
 			}
 
 			var objList = [];
@@ -45,17 +45,13 @@
 				scene.add(light);
 			}
 
-			// addObj(1000000,{x:0.01,y:0},{x:0,y:1});
-			// addObj(1000000,{x:-0.01,y:0},{x:0,y:-1});
-			// addObj(1000000,{x:0,y:0.01},{x:2,y:0});
-			addObj(1000,{x:0,y:0.05},{x:-2,y:0});
-			// addObj(1000000,{x:0.01,y:-0.01},{x:0,y:0});
-			// addObj(1000000,{x:0,y:0},{x:-10,y:-10});
-			addObj(10000000,{x:0,y:0},{x:0,y:0},false);
-			addObj(1000,{x:0,y:-0.05},{x:1,y:0});
-			// for(var i=0;i<555;i++){
-			// 	addObj(10,{x:0,y:0},{x:(Math.random()-0.5)*6,y:(Math.random()-0.5)*6});
-			// }
+			for(var i=0;i<100;i++){
+				addObj(1e9,{x:0,y:0},{x:(Math.random()-0.5)*7,y:(Math.random()-0.5)*7});
+			}
+
+			// addObj(10000,{x:0,y:0.03},{x:-2,y:0});
+			// addObj(10000000,{x:0,y:0},{x:0,y:0},false);
+			// addObj(10000,{x:0,y:-0.03},{x:1,y:0});
 
 			camera.position.z = 15;
 
@@ -73,21 +69,33 @@
 			var now=window.performance.now();
 			var prev=null;
 
+			//velocity verlet  https://en.wikipedia.org/wiki/Verlet_integration#Velocity_Verlet
 			function physics(){
 				now=window.performance.now();
 				if(prev==null){
 					dt=0;
 					console.log("Beginning")
 				}else{
-					//dt=now-prev;
-					 dt=5;
+					//dt=(now-prev)*1e-3;;
+					dt=5*1e-3;
 				}
+
 				for(var i=0;i<objList.length;i++){
-					let a_sum={x:0,y:0};
+					let obj_i=objList[i]
+					let i_pos=obj_i.mesh.position
+					if(obj_i.acc!=null){	//do not update if object just initialize(no accel)
+						i_pos.x=i_pos.x+obj_i.vel.x*dt+0.5*obj_i.acc.x*dt*dt;
+						i_pos.y=i_pos.y+obj_i.vel.y*dt+0.5*obj_i.acc.y*dt*dt;
+					}
+				}
+
+				for(var i=0;i<objList.length;i++){
 					let obj_i=objList[i]
 					let i_pos=obj_i.mesh.position
 					
 					if(!obj_i.static){
+						
+						let a_sum={x:0,y:0};
 						for(var j=0;j<objList.length;j++){
 							let obj_j=objList[j]
 							let j_pos=obj_j.mesh.position
@@ -95,25 +103,25 @@
 							
 							let r2=Math.pow(j_pos.x-i_pos.x, 2)+Math.pow(j_pos.y-i_pos.y, 2); //r^2
 							if(r2>0){
-								let F=G*obj_i.mass*obj_j.mass/r2 // Gm1m2/r^2
+								let epsilon2=Math.pow(0.001,2); //parameter for softening the gravity to solve singularity(velocity go to infinity when distance go to zero)
+																// See https://en.wikipedia.org/wiki/N-body_problem#Few_bodies
+								let F=G*obj_i.mass*obj_j.mass/Math.sqrt(r2+epsilon2) // Gm1m2/r^2
 
 								let r=Math.sqrt(r2);
 								let vec_norm={x:(j_pos.x-i_pos.x)/r,y:(j_pos.y-i_pos.y)/r} //Normalized force direction vector
 
 								let a=F/obj_i.mass; //accel
 
-								a_sum.x+=vec_norm.x*a*dt;
-								a_sum.y+=vec_norm.y*a*dt;
+								a_sum.x+=vec_norm.x*a;
+								a_sum.y+=vec_norm.y*a;
 							}
 						}
-						obj_i.vel.x+=a_sum.x;
-						obj_i.vel.y+=a_sum.y;
-					}
-				}
-				for(var i=0;i<objList.length;i++){
-					if(!objList[i].static){
-						objList[i].mesh.position.x+=objList[i].vel.x
-						objList[i].mesh.position.y+=objList[i].vel.y
+
+						if(obj_i.acc!=null){	//do not update if object just initialize(no accel)
+							obj_i.vel.x=obj_i.vel.x+0.5*(obj_i.acc.x+a_sum.x)*dt;
+							obj_i.vel.y=obj_i.vel.y+0.5*(obj_i.acc.y+a_sum.y)*dt;
+						}
+						obj_i.acc=a_sum;
 					}
 				}
 
