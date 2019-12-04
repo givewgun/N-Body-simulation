@@ -46,12 +46,16 @@
 			}
 
 			for(var i=0;i<100;i++){
-				addObj(1e9,{x:0,y:0},{x:(Math.random()-0.5)*7,y:(Math.random()-0.5)*7});
+				addObj(1e10,{x:0,y:0},{x:(Math.random()-0.5)*7,y:(Math.random()-0.5)*7});
 			}
 
-			// addObj(10000,{x:0,y:0.03},{x:-2,y:0});
-			// addObj(10000000,{x:0,y:0},{x:0,y:0},false);
-			// addObj(10000,{x:0,y:-0.03},{x:1,y:0});
+			// addObj(1e5,{x:0,y:0.6},{x:-2,y:0});
+			// addObj(1e10,{x:0,y:0},{x:0,y:0},true);
+			// addObj(1e5,{x:0,y:-0.8},{x:1,y:0});
+			// addObj(1e5,{x:0,y:0.5},{x:-3,y:0});
+
+			// addObj(1e10,{x:0,y:0.2},{x:-2,y:0});
+			// addObj(1e10,{x:0,y:-0.2},{x:2,y:0});
 
 			camera.position.z = 15;
 
@@ -103,17 +107,20 @@
 							
 							let r2=Math.pow(j_pos.x-i_pos.x, 2)+Math.pow(j_pos.y-i_pos.y, 2); //r^2
 							if(r2>0){
-								let epsilon2=Math.pow(0.001,2); //parameter for softening the gravity to solve singularity(velocity go to infinity when distance go to zero)
-																// See https://en.wikipedia.org/wiki/N-body_problem#Few_bodies
-								let F=G*obj_i.mass*obj_j.mass/Math.sqrt(r2+epsilon2) // Gm1m2/r^2
+								let epsilon2=Math.pow(0.1,2); //parameter for softening the gravity to mitigate singularity problem(velocity go to infinity when distance go to zero)
+																//See http://www.scholarpedia.org/article/N-body_simulations_(gravitational)
+								let r_vec={x:j_pos.x-i_pos.x,y:j_pos.y-i_pos.y} //distance vector
 
-								let r=Math.sqrt(r2);
-								let vec_norm={x:(j_pos.x-i_pos.x)/r,y:(j_pos.y-i_pos.y)/r} //Normalized force direction vector
+								//F_scalar = m(i)*a(i) = G*m(i)*m(j) / r(i,j)^2
+								//a_scalar = G*m(j) / r(i,j)^2
+								//a_vec = a_scalar* (r_vec / r_scalar)
+								//a_vec = G*m(j)*r_vec / r(i,j)^3
+								let tmp=G*obj_j.mass/Math.pow(r2+epsilon2,3/2);
+								let ax=tmp*r_vec.x; //accel x
+								let ay=tmp*r_vec.y; //accel y
 
-								let a=F/obj_i.mass; //accel
-
-								a_sum.x+=vec_norm.x*a;
-								a_sum.y+=vec_norm.y*a;
+								a_sum.x+=ax;
+								a_sum.y+=ay;
 							}
 						}
 
