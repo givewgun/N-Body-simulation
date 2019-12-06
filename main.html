@@ -1,139 +1,25 @@
 <html>
-	<head>
-		<title>AAAAAAAAaAaAaAaaAaaAaaaaaaaaa</title>
-		<style>
-			body { margin: 0; }
-			canvas { width: 100%; height: 100% }
-		</style>
-	</head>
-	<body>
-		<script src="js/three.js"></script>
-		<script>
 
-			function getRandomColor() {
-				var letters = '0123456789ABCDEF';
-				var color = '#';
-				for (var i = 0; i < 6; i++) {
-					color += letters[Math.floor(Math.random() * 16)];
-				}
-				return color;
-			}
+<head>
+	<title>AAAAAAAAaAaAaAaaAaaAaaaaaaaaa</title>
+	<style>
+		body {
+			margin: 0;
+		}
 
-			function addObj(mass=10,vel={x:0,y:0},pos={x:0,y:0},static=false,radius=0.1){
-				var geometry = new THREE.SphereGeometry(radius, 32, 32 );
-				var material = new THREE.MeshPhongMaterial({color: getRandomColor()});
-				var mesh = new THREE.Mesh( geometry, material );
-				mesh.position.set(pos.x, pos.y, 0);
-				scene.add( mesh );
-				objList.push({mesh:mesh,mass:mass,vel:vel,acc:null,static:static});
-			}
+		canvas {
+			width: 100%;
+			height: 100%
+		}
+	</style>
+</head>
 
-			var objList = [];
-			const G=6.674*0.00000000001
-			var scene = new THREE.Scene();
-			var camera = new THREE.PerspectiveCamera( 75, window.innerWidth/window.innerHeight, 0.1, 1000 );
+<body>
+	<script src="js/three.js"></script>
+	<script src="js/main.js"></script>
+	<script>
+		init();
+	</script>
+</body>
 
-			var renderer = new THREE.WebGLRenderer();
-			renderer.setSize( window.innerWidth, window.innerHeight );
-			document.body.appendChild( renderer.domElement );
-
-			{
-				const color = 0xFFFFFF;
-				const intensity = 1;
-				const light = new THREE.DirectionalLight(color, intensity);
-				light.position.set(-1, 2, 4);
-				scene.add(light);
-			}
-
-			for(var i=0;i<100;i++){
-				addObj(1e10,{x:0,y:0},{x:(Math.random()-0.5)*7,y:(Math.random()-0.5)*7});
-			}
-
-			// addObj(1e5,{x:0,y:0.6},{x:-2,y:0});
-			// addObj(1e10,{x:0,y:0},{x:0,y:0},true);
-			// addObj(1e5,{x:0,y:-0.8},{x:1,y:0});
-			// addObj(1e5,{x:0,y:0.5},{x:-3,y:0});
-
-			// addObj(1e10,{x:0,y:0.2},{x:-2,y:0});
-			// addObj(1e10,{x:0,y:-0.2},{x:2,y:0});
-
-			camera.position.z = 15;
-
-			
-			var animate = function () {
-				requestAnimationFrame( animate );
-
-				
-				renderer.render( scene, camera );
-			};
-
-			animate();
-			window.setInterval(physics,5);	
-			let dt=0;
-			var now=window.performance.now();
-			var prev=null;
-
-			//velocity verlet  https://en.wikipedia.org/wiki/Verlet_integration#Velocity_Verlet
-			function physics(){
-				now=window.performance.now();
-				if(prev==null){
-					dt=0;
-					console.log("Beginning")
-				}else{
-					//dt=(now-prev)*1e-3;;
-					dt=5*1e-3;
-				}
-
-				for(var i=0;i<objList.length;i++){
-					let obj_i=objList[i]
-					let i_pos=obj_i.mesh.position
-					if(obj_i.acc!=null){	//do not update if object just initialize(no accel)
-						i_pos.x=i_pos.x+obj_i.vel.x*dt+0.5*obj_i.acc.x*dt*dt;
-						i_pos.y=i_pos.y+obj_i.vel.y*dt+0.5*obj_i.acc.y*dt*dt;
-					}
-				}
-
-				for(var i=0;i<objList.length;i++){
-					let obj_i=objList[i]
-					let i_pos=obj_i.mesh.position
-					
-					if(!obj_i.static){
-						
-						let a_sum={x:0,y:0};
-						for(var j=0;j<objList.length;j++){
-							let obj_j=objList[j]
-							let j_pos=obj_j.mesh.position
-							
-							
-							let r2=Math.pow(j_pos.x-i_pos.x, 2)+Math.pow(j_pos.y-i_pos.y, 2); //r^2
-							if(r2>0){
-								let epsilon2=Math.pow(0.1,2); //parameter for softening the gravity to mitigate singularity problem(velocity go to infinity when distance go to zero)
-																//See http://www.scholarpedia.org/article/N-body_simulations_(gravitational)
-								let r_vec={x:j_pos.x-i_pos.x,y:j_pos.y-i_pos.y} //distance vector
-
-								//F_scalar = m(i)*a(i) = G*m(i)*m(j) / r(i,j)^2
-								//a_scalar = G*m(j) / r(i,j)^2
-								//a_vec = a_scalar* (r_vec / r_scalar)
-								//a_vec = G*m(j)*r_vec / r(i,j)^3
-								let tmp=G*obj_j.mass/Math.pow(r2+epsilon2,3/2);
-								let ax=tmp*r_vec.x; //accel x
-								let ay=tmp*r_vec.y; //accel y
-
-								a_sum.x+=ax;
-								a_sum.y+=ay;
-							}
-						}
-
-						if(obj_i.acc!=null){	//do not update if object just initialize(no accel)
-							obj_i.vel.x=obj_i.vel.x+0.5*(obj_i.acc.x+a_sum.x)*dt;
-							obj_i.vel.y=obj_i.vel.y+0.5*(obj_i.acc.y+a_sum.y)*dt;
-						}
-						obj_i.acc=a_sum;
-					}
-				}
-
-				prev=now;
-			}
-		</script>
-	</body>
 </html>
