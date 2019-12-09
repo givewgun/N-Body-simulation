@@ -12,6 +12,9 @@ const light = new THREE.DirectionalLight(color, intensity);
 light.position.set(-1, 2, 4);
 scene.add(light);
 
+//Boundary for BNTree
+const width = 20;
+
 function getRandomColor() {
     var letters = '0123456789ABCDEF';
     var color = '#';
@@ -31,28 +34,28 @@ function addObj(mass = 10, vel = { x: 0, y: 0 }, pos = { x: 0, y: 0 }, static = 
 }
 
 //Calculate acceleration on i by j. 
-function calAcc(obj_i, obj_j) {
-    let i_pos = obj_i.mesh.position
-    let j_pos = obj_j.mesh.position
+// function calAcc(obj_i, obj_j) {
+//     let i_pos = obj_i.mesh.position
+//     let j_pos = obj_j.mesh.position
 
-    let r2 = Math.pow(j_pos.x - i_pos.x, 2) + Math.pow(j_pos.y - i_pos.y, 2); //r^2
-    if (r2 > 0) {
-        let epsilon2 = Math.pow(0.1, 2); //parameter for softening the gravity to mitigate singularity problem(velocity go to infinity when distance go to zero)
-        //See http://www.scholarpedia.org/article/N-body_simulations_(gravitational)
-        let r_vec = { x: j_pos.x - i_pos.x, y: j_pos.y - i_pos.y } //distance vector
+//     let r2 = Math.pow(j_pos.x - i_pos.x, 2) + Math.pow(j_pos.y - i_pos.y, 2); //r^2
+//     if (r2 > 0) {
+//         let epsilon2 = Math.pow(0.1, 2); //parameter for softening the gravity to mitigate singularity problem(velocity go to infinity when distance go to zero)
+//         //See http://www.scholarpedia.org/article/N-body_simulations_(gravitational)
+//         let r_vec = { x: j_pos.x - i_pos.x, y: j_pos.y - i_pos.y } //distance vector
 
-        //F_scalar = m(i)*a(i) = G*m(i)*m(j) / r(i,j)^2
-        //a_scalar = G*m(j) / r(i,j)^2
-        //a_vec = a_scalar* (r_vec / r_scalar)
-        //a_vec = G*m(j)*r_vec / r(i,j)^3
-        let tmp = G * obj_j.mass / Math.pow(r2 + epsilon2, 3 / 2);
-        let ax = tmp * r_vec.x; //accel x
-        let ay = tmp * r_vec.y; //accel y
+//         //F_scalar = m(i)*a(i) = G*m(i)*m(j) / r(i,j)^2
+//         //a_scalar = G*m(j) / r(i,j)^2
+//         //a_vec = a_scalar* (r_vec / r_scalar)
+//         //a_vec = G*m(j)*r_vec / r(i,j)^3
+//         let tmp = G * obj_j.mass / Math.pow(r2 + epsilon2, 3 / 2);
+//         let ax = tmp * r_vec.x; //accel x
+//         let ay = tmp * r_vec.y; //accel y
 
-        return { x: ax, y: ay };
-    }
-    return { x: 0, y: 0 };
-}
+//         return { x: ax, y: ay };
+//     }
+//     return { x: 0, y: 0 };
+// }
 
 function calNewPos(obj_i) {
     let i_pos = obj_i.mesh.position;
@@ -91,21 +94,40 @@ function update() {
         }
     }
 
+    //Build tree
+    let max_depth = 0;
+    // let bef=window.performance.now();
+    let root = new BNTree({ x: -width / 2, y: -width / 2 }, width, width, 0);
+    for (var i = 0; i < objList.length; i++) {
+        let obj = objList[i];
+        let pos = obj.mesh.position;
+        if (pos.x >= -width / 2 && pos.x <= width / 2 && pos.y >= -width / 2 && pos.y <= width / 2) {
+            let depth = root.insertObj(objList[i]);
+            if (depth > max_depth) {
+                max_depth = depth;
+            }
+        }
+    }
+    console.log(max_depth);
+    // console.log(window.performance.now()-bef);
+
     for (var i = 0; i < objList.length; i++) {
         let obj_i = objList[i]
 
         if (!obj_i.static) {
-            let a_sum = { x: 0, y: 0 };
+            let a_sum = root.calTotalAcc(obj_i);
 
-            for (var j = 0; j < objList.length; j++) {
-                let obj_j = objList[j]
+            //brute force
+            // let a_sum = { x: 0, y: 0 };
 
-                let a = calAcc(obj_i, obj_j);
+            // for (var j = 0; j < objList.length; j++) {
+            //     let obj_j = objList[j]
 
-                a_sum.x += a.x;
-                a_sum.y += a.y;
-            }
+            //     let a = calAcc(obj_i, obj_j);
 
+            //     a_sum.x += a.x;
+            //     a_sum.y += a.y;
+            // }
             if (obj_i.acc != null) {	//do not update if object just initialize(no accel)
                 let vel_new = calNewVel(obj_i, a_sum);
 
@@ -138,8 +160,14 @@ function init() {
     // addObj(1e10, { x: 0, y: -7 }, { x: 1, y: 0 });
     // addObj(1e10, { x: 0, y: 5 }, { x: -3, y: 0 });
 
-    // addObj(1e10,{x:0,y:0.2},{x:-2,y:0});
-    // addObj(1e10,{x:0,y:-0.2},{x:2,y:0});
+    // addObj(1e10, { x: 0, y: 0.2 }, { x: -2, y: 0 });
+    // addObj(1e10, { x: 0, y: -0.2 }, { x: 2, y: 0 });
+
+    //Boundary corner
+    addObj(0, { x: 0, y: 0 }, { x: width / 2 + 0.1, y: width / 2 + 0.1 }, true);
+    addObj(0, { x: 0, y: 0 }, { x: -(width / 2 + 0.1), y: width / 2 + 0.1 }, true);
+    addObj(0, { x: 0, y: 0 }, { x: width / 2 + 0.1, y: -(width / 2 + 0.1) }, true);
+    addObj(0, { x: 0, y: 0 }, { x: -(width / 2 + 0.1), y: -(width / 2 + 0.1) }, true);
 
     animate();
     window.setInterval(update, 5);

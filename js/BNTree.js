@@ -1,5 +1,6 @@
 // Instruction by https://www.cs.princeton.edu/courses/archive/fall03/cs126/assignments/barnes-hut.html
 const MAXDEPTH = 50;
+const theta = 0.5;
 
 class BNTree {
     constructor(origin, width, height, depth) { //origin is bottom left corner of boundary
@@ -48,23 +49,28 @@ class BNTree {
 
     //Calculate the quadrant and insert to children
     insertQuadrant(obj) {
+        let depth = this.depth; //For debugging //depth of inserted obj
+
         let obj_pos = { x: obj.mesh.position.x, y: obj.mesh.position.y };
 
         let horizontal_center = this.children.NE.origin.x;
         let vertical_center = this.children.NE.origin.y;
 
         if (obj_pos.x < horizontal_center && obj_pos.y >= vertical_center) {
-            this.children.NW.insertObj(obj);
+            depth = this.children.NW.insertObj(obj);
         } else if (obj_pos.x >= horizontal_center && obj_pos.y >= vertical_center) {
-            this.children.NE.insertObj(obj);
+            depth = this.children.NE.insertObj(obj);
         } else if (obj_pos.x < horizontal_center && obj_pos.y < vertical_center) {
-            this.children.SW.insertObj(obj);
+            depth = this.children.SW.insertObj(obj);
         } else if (obj_pos.x >= horizontal_center && obj_pos.y < vertical_center) {
-            this.children.SE.insertObj(obj);
+            depth = this.children.SE.insertObj(obj);
         }
+        return depth;
     }
 
     insertObj(obj) {
+        let depth = this.depth; //For debugging //depth of inserted obj
+
         let obj_pos = { x: obj.mesh.position.x, y: obj.mesh.position.y };
 
         if (this.is_empty()) {
@@ -72,15 +78,14 @@ class BNTree {
             this.CM_point = obj_pos;
             this.total_mass += obj.mass;
         } else if (this.is_external()) { //external node and not empty
-
             if (this.depth < MAXDEPTH) {
                 //Divide region and insert objs to children
                 this.divideRegion();
                 this.insertQuadrant(this.obj_list[0]);
-                this.insertQuadrant(obj);
+                depth = this.insertQuadrant(obj);
                 this.obj_list = [];
             } else {
-                console.log("Depth Limit reached",this.depth)
+                // console.log("Depth Limit reached",this.depth)
                 this.obj_list.push(obj);
             }
 
@@ -89,7 +94,6 @@ class BNTree {
             this.CM_point.x = new_CM.x;
             this.CM_point.y = new_CM.y;
             this.total_mass = new_CM.mass;
-
         } else {
             //Calculate new CM 
             let new_CM = this.calCM(this.total_mass, obj.mass, this.CM_point, obj_pos);
@@ -98,14 +102,60 @@ class BNTree {
             this.total_mass = new_CM.mass;
 
             //Recursively insert in appropriate quadrant
-            this.insertQuadrant(obj);
+            depth = this.insertQuadrant(obj);
         }
+
+        return depth;
     }
 
-    // TODO : Calculate force to obj
-    calForce(obj) {
+    // TODO : Calculate acc on obj
+    calTotalAcc(obj) {
+        if (this.is_empty()) {
+            return { x: 0, y: 0 };
+        }
+
         if (this.is_external()) {
-
+            let a_sum = { x: 0, y: 0 };
+            for (let j = 0; j < this.obj_list.length; j++) {
+                let obj_j = this.obj_list[j];
+                let a = calAcc(obj.mesh.position, obj_j.mesh.position, obj_j.mass);
+                a_sum.x += a.x;
+                a_sum.y += a.y;
+            }
+            return a_sum;
+        } else if (this.width / calDistance(obj.mesh.position, this.CM_point) < theta) {
+            return calAcc(obj.mesh.position, this.CM_point, this.total_mass);
+        } else {
+            let NW_acc = this.children.NW.calTotalAcc(obj);
+            let NE_acc = this.children.NE.calTotalAcc(obj);
+            let SW_acc = this.children.SW.calTotalAcc(obj);
+            let SE_acc = this.children.SE.calTotalAcc(obj);
+            return { x: NW_acc.x + NE_acc.x + SW_acc.x + SE_acc.x, y: NW_acc.y + NE_acc.y + SW_acc.y + SE_acc.y };
         }
     }
+}
+
+//Calculate acceleration on i by j. 
+function calAcc(i_pos, j_pos, j_mass) {
+    let r = calDistance(i_pos, j_pos);
+    if (r > 0) {
+        let epsilon2 = Math.pow(0.1, 2); //parameter for softening the gravity to mitigate singularity problem(velocity go to infinity when distance go to zero)
+        //See http://www.scholarpedia.org/article/N-body_simulations_(gravitational)
+        let r_vec = { x: j_pos.x - i_pos.x, y: j_pos.y - i_pos.y } //distance vector
+
+        //F_scalar = m(i)*a(i) = G*m(i)*m(j) / r(i,j)^2
+        //a_scalar = G*m(j) / r(i,j)^2
+        //a_vec = a_scalar* (r_vec / r_scalar)
+        //a_vec = G*m(j)*r_vec / r(i,j)^3
+        let tmp = G * j_mass / Math.pow(r * r + epsilon2, 3 / 2);
+        let ax = tmp * r_vec.x; //accel x
+        let ay = tmp * r_vec.y; //accel y
+
+        return { x: ax, y: ay };
+    }
+    return { x: 0, y: 0 };
+}
+
+function calDistance(i_pos, j_pos) {
+    return Math.sqrt(Math.pow(j_pos.x - i_pos.x, 2) + Math.pow(j_pos.y - i_pos.y, 2));
 }
