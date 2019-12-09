@@ -1,7 +1,11 @@
 // Instruction by https://www.cs.princeton.edu/courses/archive/fall03/cs126/assignments/barnes-hut.html
+const MAXDEPTH = 50;
+
 class BNTree {
-    constructor(origin, width, height) { //origin is bottom left corner of boundary
-        this.obj = null;
+    constructor(origin, width, height, depth) { //origin is bottom left corner of boundary
+        this.obj_list = [];
+
+        this.depth = depth;
 
         //Center of mass
         this.CM_point = null; //center of mass point
@@ -27,10 +31,11 @@ class BNTree {
     divideRegion() {
         let new_width = 0.5 * this.width;
         let new_height = 0.5 * this.height;
-        let NW = new BNTree({ x: this.origin.x, y: this.origin.y + new_height }, new_width, new_height);
-        let NE = new BNTree({ x: this.origin.x + new_width, y: this.origin.y + new_height }, new_width, new_height);
-        let SW = new BNTree({ x: this.origin.x, y: this.origin.y }, new_width, new_height);
-        let SE = new BNTree({ x: this.origin.x + new_width, y: this.origin.y }, new_width, new_height);
+        let new_depth = this.depth + 1;
+        let NW = new BNTree({ x: this.origin.x, y: this.origin.y + new_height }, new_width, new_height, new_depth);
+        let NE = new BNTree({ x: this.origin.x + new_width, y: this.origin.y + new_height }, new_width, new_height, new_depth);
+        let SW = new BNTree({ x: this.origin.x, y: this.origin.y }, new_width, new_height, new_depth);
+        let SE = new BNTree({ x: this.origin.x + new_width, y: this.origin.y }, new_width, new_height, new_depth);
         this.children = { NW: NW, NE: NE, SW: SW, SE: SE };
     }
 
@@ -43,45 +48,51 @@ class BNTree {
 
     //Calculate the quadrant and insert to children
     insertQuadrant(obj) {
-        obj_pos = { x: obj.mesh.position.x, y: obj.mesh.position.y };
+        let obj_pos = { x: obj.mesh.position.x, y: obj.mesh.position.y };
 
         let horizontal_center = this.children.NE.origin.x;
         let vertical_center = this.children.NE.origin.y;
 
         if (obj_pos.x < horizontal_center && obj_pos.y >= vertical_center) {
-            this.insertObj(this.children.NW, obj);
+            this.children.NW.insertObj(obj);
         } else if (obj_pos.x >= horizontal_center && obj_pos.y >= vertical_center) {
-            this.insertObj(this.children.NE, obj);
+            this.children.NE.insertObj(obj);
         } else if (obj_pos.x < horizontal_center && obj_pos.y < vertical_center) {
-            this.insertObj(this.children.SW, obj);
+            this.children.SW.insertObj(obj);
         } else if (obj_pos.x >= horizontal_center && obj_pos.y < vertical_center) {
-            this.insertObj(this.children.SE, obj);
+            this.children.SE.insertObj(obj);
         }
     }
 
     insertObj(obj) {
-        obj_pos = { x: obj.mesh.position.x, y: obj.mesh.position.y };
+        let obj_pos = { x: obj.mesh.position.x, y: obj.mesh.position.y };
 
         if (this.is_empty()) {
-            this.obj = obj;
+            this.obj_list.push(obj);
             this.CM_point = obj_pos;
             this.total_mass += obj.mass;
         } else if (this.is_external()) { //external node and not empty
-            //Divide region and insert objs to children
-            this.divideRegion();
-            this.insertQuadrant(this.obj);
-            this.insertQuadrant(obj);
-            this.obj = null;
+
+            if (this.depth < MAXDEPTH) {
+                //Divide region and insert objs to children
+                this.divideRegion();
+                this.insertQuadrant(this.obj_list[0]);
+                this.insertQuadrant(obj);
+                this.obj_list = [];
+            } else {
+                console.log("Depth Limit reached",this.depth)
+                this.obj_list.push(obj);
+            }
 
             //Calculate new CM
-            let new_CM = calCM(this.total_mass, obj.mass, this.CM_point, obj_pos);
+            let new_CM = this.calCM(this.total_mass, obj.mass, this.CM_point, obj_pos);
             this.CM_point.x = new_CM.x;
             this.CM_point.y = new_CM.y;
             this.total_mass = new_CM.mass;
 
         } else {
             //Calculate new CM 
-            let new_CM = calCM(this.total_mass, obj.mass, this.CM_point, obj_pos);
+            let new_CM = this.calCM(this.total_mass, obj.mass, this.CM_point, obj_pos);
             this.CM_point.x = new_CM.x;
             this.CM_point.y = new_CM.y;
             this.total_mass = new_CM.mass;
@@ -92,7 +103,9 @@ class BNTree {
     }
 
     // TODO : Calculate force to obj
-    calForce(obj){
-        
+    calForce(obj) {
+        if (this.is_external()) {
+
+        }
     }
 }
