@@ -1,19 +1,28 @@
 var objList = [];
 const G = 6.674 * 0.00000000001
 var scene = new THREE.Scene();
-var camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-camera.position.z = 15;
+var c_left = window.innerWidth / - 2;
+var c_right = window.innerWidth / 2
+var c_top = window.innerHeight / 2
+var c_bottom = window.innerHeight / - 2;
+var c_zoom_factor = 1;
+console.log(top)
+var camera = new THREE.OrthographicCamera(c_left, c_right, c_top, c_bottom, -1000, 1000);
+camera.position.z = 100;
 var renderer = new THREE.WebGLRenderer();
 renderer.setSize(window.innerWidth, window.innerHeight);
 
-const color = 0xFFFFFF;
-const intensity = 1;
-const light = new THREE.DirectionalLight(color, intensity);
-light.position.set(-1, 2, 4);
-scene.add(light);
-
 //Boundary for BNTree
-const width = 20;
+let BB_width = window.innerWidth;
+let BB_height = window.innerHeight;
+let adaptive_BB = true; //Bounding box size is varies to fit all objs in the tree.
+
+//Realtime or fixed time step
+let fixed_timestep = true;
+let time_step = 10; //ms
+
+//Brute Force?
+let bruteForce=false;
 
 function getRandomColor() {
     var letters = '0123456789ABCDEF';
@@ -24,38 +33,16 @@ function getRandomColor() {
     return color;
 }
 
-function addObj(mass = 10, vel = { x: 0, y: 0 }, pos = { x: 0, y: 0 }, static = false, radius = 0.1) {
-    var geometry = new THREE.SphereGeometry(radius, 32, 32);
-    var material = new THREE.MeshPhongMaterial({ color: getRandomColor() });
+function addObj(mass = 10e10, vel = { x: 0, y: 0 }, pos = { x: 0, y: 0 }, color = getRandomColor(), static = false) {
+    // radius = 0.01*1e-3*Math.pow(mass,1/3);
+    radius = 0.3 * Math.log10(mass);
+    var geometry = new THREE.CircleGeometry(radius, 32);
+    var material = new THREE.MeshBasicMaterial({ color: color });
     var mesh = new THREE.Mesh(geometry, material);
     mesh.position.set(pos.x, pos.y, 0);
     scene.add(mesh);
     objList.push({ mesh: mesh, mass: mass, vel: vel, acc: null, static: static });
 }
-
-//Calculate acceleration on i by j. 
-// function calAcc(obj_i, obj_j) {
-//     let i_pos = obj_i.mesh.position
-//     let j_pos = obj_j.mesh.position
-
-//     let r2 = Math.pow(j_pos.x - i_pos.x, 2) + Math.pow(j_pos.y - i_pos.y, 2); //r^2
-//     if (r2 > 0) {
-//         let epsilon2 = Math.pow(0.1, 2); //parameter for softening the gravity to mitigate singularity problem(velocity go to infinity when distance go to zero)
-//         //See http://www.scholarpedia.org/article/N-body_simulations_(gravitational)
-//         let r_vec = { x: j_pos.x - i_pos.x, y: j_pos.y - i_pos.y } //distance vector
-
-//         //F_scalar = m(i)*a(i) = G*m(i)*m(j) / r(i,j)^2
-//         //a_scalar = G*m(j) / r(i,j)^2
-//         //a_vec = a_scalar* (r_vec / r_scalar)
-//         //a_vec = G*m(j)*r_vec / r(i,j)^3
-//         let tmp = G * obj_j.mass / Math.pow(r2 + epsilon2, 3 / 2);
-//         let ax = tmp * r_vec.x; //accel x
-//         let ay = tmp * r_vec.y; //accel y
-
-//         return { x: ax, y: ay };
-//     }
-//     return { x: 0, y: 0 };
-// }
 
 function calNewPos(obj_i) {
     let i_pos = obj_i.mesh.position;
@@ -79,8 +66,11 @@ function update() {
         dt = 0;
         console.log("Beginning")
     } else {
-        //dt=(now-prev)*1e-3;;
-        dt = 5 * 1e-3;
+        if (fixed_timestep) {
+            dt = time_step * 1e-3;
+        } else {
+            dt = (now - prev) * 1e-3;
+        }
     }
 
     for (var i = 0; i < objList.length; i++) {
@@ -93,41 +83,60 @@ function update() {
             i_pos.y = pos_new.y;
         }
     }
-
-    //Build tree
-    let max_depth = 0;
-    // let bef=window.performance.now();
-    let root = new BNTree({ x: -width / 2, y: -width / 2 }, width, width, 0);
-    for (var i = 0; i < objList.length; i++) {
-        let obj = objList[i];
-        let pos = obj.mesh.position;
-        if (pos.x >= -width / 2 && pos.x <= width / 2 && pos.y >= -width / 2 && pos.y <= width / 2) {
-            let depth = root.insertObj(objList[i]);
-            if (depth > max_depth) {
-                max_depth = depth;
+    
+    if(!bruteForce){
+        if (adaptive_BB) {
+            BB_width = 0;
+            BB_height = 0;
+            for (var i = 0; i < objList.length; i++) {
+                let obj_i = objList[i]
+                let i_pos = obj_i.mesh.position
+                if (2 * Math.abs(i_pos.x) > BB_width) {
+                    BB_width = 2 * Math.abs(i_pos.x);
+                }
+                if (2 * Math.abs(i_pos.y) > BB_height) {
+                    BB_height = 2 * Math.abs(i_pos.y);
+                }
+            }
+        }
+    
+        //Build tree
+        var max_depth = 0; //For finding tree depth
+        var root = new BNTree({ x: -BB_width / 2, y: -BB_height / 2 }, BB_width, BB_height, 0);
+        for (var i = 0; i < objList.length; i++) {
+            let obj = objList[i];
+            let pos = obj.mesh.position;
+            if (pos.x >= -BB_width / 2 && pos.x <= BB_width / 2 && pos.y >= -BB_height / 2 && pos.y <= BB_height / 2) {
+                let depth = root.insertObj(objList[i]);
+                if (depth > max_depth) {
+                    max_depth = depth;
+                }
             }
         }
     }
-    console.log(max_depth);
-    // console.log(window.performance.now()-bef);
+    
 
     for (var i = 0; i < objList.length; i++) {
         let obj_i = objList[i]
 
         if (!obj_i.static) {
-            let a_sum = root.calTotalAcc(obj_i);
+            let a_sum;
+            if(bruteForce){
+                 //brute force
+                a_sum = { x: 0, y: 0 };
 
-            //brute force
-            // let a_sum = { x: 0, y: 0 };
+                for (var j = 0; j < objList.length; j++) {
+                    let obj_j = objList[j]
 
-            // for (var j = 0; j < objList.length; j++) {
-            //     let obj_j = objList[j]
+                    let a = calAcc(obj_i.mesh.position, obj_j.mesh.position, obj_j.mass);
 
-            //     let a = calAcc(obj_i, obj_j);
+                    a_sum.x += a.x;
+                    a_sum.y += a.y;
+                }
+            }else{
+                a_sum = root.calTotalAcc(obj_i);
+            }
 
-            //     a_sum.x += a.x;
-            //     a_sum.y += a.y;
-            // }
             if (obj_i.acc != null) {	//do not update if object just initialize(no accel)
                 let vel_new = calNewVel(obj_i, a_sum);
 
@@ -137,7 +146,8 @@ function update() {
             obj_i.acc = a_sum;
         }
     }
-
+    console.log(dt, (window.performance.now() - now), max_depth, BB_width, BB_height);
+    //console.log((window.performance.now()-now));  //Loop compute time
     prev = now;
 }
 
@@ -148,27 +158,74 @@ function animate() {
     renderer.render(scene, camera);
 }
 
+function mouseZoom(e) {
+    c_zoom_factor = Math.max(c_zoom_factor + e.deltaY / 1000, 0.1);
+    // console.log(e.deltaY, c_zoom_factor);
+    camera.left = c_zoom_factor * c_left;
+    camera.right = c_zoom_factor * c_right;
+    camera.top = c_zoom_factor * c_top;
+    camera.bottom = c_zoom_factor * c_bottom;
+    camera.updateProjectionMatrix();
+    if (!adaptive_BB) {
+        let s = new THREE.Vector2();
+        renderer.getSize(s);
+        BB_width = Math.max(camera.right - camera.left, s.x);
+        BB_height = Math.max(camera.top - camera.bottom, s.y);
+    }
+}
+
 function init() {
     document.body.appendChild(renderer.domElement);
+    document.getElementById("canvas").addEventListener("wheel", mouseZoom);
 
-    for (var i = 0; i < 100; i++) {
-        addObj(1e10, { x: 0, y: 0 }, { x: (Math.random() - 0.5) * 7, y: (Math.random() - 0.5) * 7 });
+    for (var i = 0; i < 500; i++) {
+        //How to generate a random point within a circle of radius R:
+        //https://stackoverflow.com/questions/5837572/generate-a-random-point-within-a-circle-uniformly
+        let r = 500 * Math.sqrt(Math.random())
+        let tt = Math.random() * 2 * Math.PI;
+        let px = -1000 + r * Math.cos(tt)
+        let py = 0 + r * Math.sin(tt)
+
+        // let max = 14;
+        // let min = 6;
+        // let mss = Math.pow(10, Math.floor(Math.random() * (max - min + 1) + min));
+        // let v = 7 / Math.pow(px * px + py * py, 1 / 4);
+        // let size = Math.sqrt(px * px + py * py);
+        // addObj(mss, { x: v * (-py) / size, y: v * px / size }, { x: px, y: py });
+        addObj(10e14, { x: 0, y: 0 }, { x: px, y: py }, '#FF0000');
     }
 
-    // addObj(1e10, { x: 0, y: 7 }, { x: -2, y: 0 });
-    // addObj(1e12, { x: 0, y: 0 }, { x: 0, y: 0 }, false);
-    // addObj(1e10, { x: 0, y: -7 }, { x: 1, y: 0 });
-    // addObj(1e10, { x: 0, y: 5 }, { x: -3, y: 0 });
+    for (var i = 0; i < 1000; i++) {
+        //How to generate a random point within a circle of radius R:
+        //https://stackoverflow.com/questions/5837572/generate-a-random-point-within-a-circle-uniformly
+        let r = 500 * Math.sqrt(Math.random())
+        let tt = Math.random() * 2 * Math.PI;
+        let px = 1000 + r * Math.cos(tt)
+        let py = 0 + r * Math.sin(tt)
 
-    // addObj(1e10, { x: 0, y: 0.2 }, { x: -2, y: 0 });
-    // addObj(1e10, { x: 0, y: -0.2 }, { x: 2, y: 0 });
+        // let max = 14;
+        // let min = 6;
+        // let mss = Math.pow(10, Math.floor(Math.random() * (max - min + 1) + min));
+        // let v = 7 / Math.pow(px * px + py * py, 1 / 4);
+        // let size = Math.sqrt(px * px + py * py);
+        // addObj(mss, { x: v * (-py) / size, y: v * px / size }, { x: px, y: py });
+        addObj(10e14, { x: 0, y: 0 }, { x: px, y: py }, '#00FF00');
+    }
+
+    // addObj(1e13, { x: 0, y: 50 }, { x: -200, y: 0 });
+    // addObj(1e16, { x: 0, y: 0 }, { x: 0, y: 0 }, getRandomColor(),false);
+    // addObj(1e13, { x: 0, y: -50 }, { x: 100, y: 0 });
+    // addObj(1e13, { x: 0, y: 50 }, { x: -300, y: 0 });
+
+    // addObj(1e16, { x: 0, y: 25 }, { x: -100, y: 0 });
+    // addObj(1e16, { x: 0, y: -25 }, { x: 100, y: 0 });
 
     //Boundary corner
-    addObj(0, { x: 0, y: 0 }, { x: width / 2 + 0.1, y: width / 2 + 0.1 }, true);
-    addObj(0, { x: 0, y: 0 }, { x: -(width / 2 + 0.1), y: width / 2 + 0.1 }, true);
-    addObj(0, { x: 0, y: 0 }, { x: width / 2 + 0.1, y: -(width / 2 + 0.1) }, true);
-    addObj(0, { x: 0, y: 0 }, { x: -(width / 2 + 0.1), y: -(width / 2 + 0.1) }, true);
+    // addObj(0, { x: 0, y: 0 }, { x: BB_width / 2 + 0.1, y: BB_height / 2 + 0.1 }, true);
+    // addObj(0, { x: 0, y: 0 }, { x: -(BB_width / 2 + 0.1), y: BB_height / 2 + 0.1 }, true);
+    // addObj(0, { x: 0, y: 0 }, { x: BB_width / 2 + 0.1, y: -(BB_height / 2 + 0.1) }, true);
+    // addObj(0, { x: 0, y: 0 }, { x: -(BB_width / 2 + 0.1), y: -(BB_height / 2 + 0.1) }, true);
 
     animate();
-    window.setInterval(update, 5);
+    window.setInterval(update, 0);
 }

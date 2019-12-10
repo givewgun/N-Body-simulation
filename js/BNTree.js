@@ -1,6 +1,7 @@
 // Instruction by https://www.cs.princeton.edu/courses/archive/fall03/cs126/assignments/barnes-hut.html
 const MAXDEPTH = 50;
 const theta = 0.5;
+const epsilon2 = Math.pow(3, 2); //parameter for softening the gravity to mitigate singularity problem(velocity go to infinity when distance go to zero)
 
 class BNTree {
     constructor(origin, width, height, depth) { //origin is bottom left corner of boundary
@@ -123,7 +124,7 @@ class BNTree {
                 a_sum.y += a.y;
             }
             return a_sum;
-        } else if (this.width / calDistance(obj.mesh.position, this.CM_point) < theta) {
+        } else if (Math.max(this.width,this.height) / calDistance(obj.mesh.position, this.CM_point) < theta) {
             return calAcc(obj.mesh.position, this.CM_point, this.total_mass);
         } else {
             let NW_acc = this.children.NW.calTotalAcc(obj);
@@ -139,7 +140,6 @@ class BNTree {
 function calAcc(i_pos, j_pos, j_mass) {
     let r = calDistance(i_pos, j_pos);
     if (r > 0) {
-        let epsilon2 = Math.pow(0.1, 2); //parameter for softening the gravity to mitigate singularity problem(velocity go to infinity when distance go to zero)
         //See http://www.scholarpedia.org/article/N-body_simulations_(gravitational)
         let r_vec = { x: j_pos.x - i_pos.x, y: j_pos.y - i_pos.y } //distance vector
 
