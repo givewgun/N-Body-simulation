@@ -6,7 +6,6 @@ var c_right = window.innerWidth / 2
 var c_top = window.innerHeight / 2
 var c_bottom = window.innerHeight / - 2;
 var c_zoom_factor = 1;
-console.log(top)
 var camera = new THREE.OrthographicCamera(c_left, c_right, c_top, c_bottom, -1000, 1000);
 camera.position.z = 100;
 var renderer = new THREE.WebGLRenderer();
@@ -17,12 +16,17 @@ let BB_width = window.innerWidth;
 let BB_height = window.innerHeight;
 let adaptive_BB = true; //Bounding box size is varies to fit all objs in the tree.
 
+//Show or hide bounding box
+let showBoundingBox = true;
+const BBmaterial = new THREE.LineBasicMaterial({ color: 0x0000ff });
+let BBLineArr = [];
+
 //Realtime or fixed time step
 let fixed_timestep = true;
 let time_step = 10; //ms
 
 //Brute Force?
-let bruteForce=false;
+let bruteForce = false;
 
 function getRandomColor() {
     var letters = '0123456789ABCDEF';
@@ -56,6 +60,33 @@ function calNewVel(obj_i, a_new) {
     return { x: obj_i.vel.x + 0.5 * (obj_i.acc.x + a_new.x) * dt, y: obj_i.vel.y + 0.5 * (obj_i.acc.y + a_new.y) * dt };
 }
 
+function boundingBoxGeometryUpdate(root) {
+    scene.remove(...BBLineArr);
+
+    BBLineArr.length = 0;
+    buildBBLineArr(root);
+
+    scene.add(...BBLineArr);
+}
+
+function buildBBLineArr(root) {
+    let BBgeometry = new THREE.Geometry();
+
+    BBgeometry.vertices.push(new THREE.Vector3(root.origin.x, root.origin.y, 0));
+    BBgeometry.vertices.push(new THREE.Vector3(root.origin.x, root.origin.y + root.height, 0));
+    BBgeometry.vertices.push(new THREE.Vector3(root.origin.x + root.width, root.origin.y + root.height, 0));
+    BBgeometry.vertices.push(new THREE.Vector3(root.origin.x + root.width, root.origin.y, 0));
+
+    BBLineArr.push(new THREE.LineLoop(BBgeometry, BBmaterial));
+
+    if (root.children != null) {
+        buildBBLineArr(root.children.NW);
+        buildBBLineArr(root.children.NE);
+        buildBBLineArr(root.children.SW);
+        buildBBLineArr(root.children.SE);
+    }
+}
+
 let dt = 0;
 var now = window.performance.now();
 var prev = null;
@@ -83,8 +114,8 @@ function update() {
             i_pos.y = pos_new.y;
         }
     }
-    
-    if(!bruteForce){
+
+    if (!bruteForce) {
         if (adaptive_BB) {
             BB_width = 0;
             BB_height = 0;
@@ -99,7 +130,7 @@ function update() {
                 }
             }
         }
-    
+
         //Build tree
         var max_depth = 0; //For finding tree depth
         var root = new BNTree({ x: -BB_width / 2, y: -BB_height / 2 }, BB_width, BB_height, 0);
@@ -113,16 +144,20 @@ function update() {
                 }
             }
         }
+
+        if (showBoundingBox) {
+            boundingBoxGeometryUpdate(root);
+        }
     }
-    
+
 
     for (var i = 0; i < objList.length; i++) {
         let obj_i = objList[i]
 
         if (!obj_i.static) {
             let a_sum;
-            if(bruteForce){
-                 //brute force
+            if (bruteForce) {
+                //brute force
                 a_sum = { x: 0, y: 0 };
 
                 for (var j = 0; j < objList.length; j++) {
@@ -133,7 +168,7 @@ function update() {
                     a_sum.x += a.x;
                     a_sum.y += a.y;
                 }
-            }else{
+            } else {
                 a_sum = root.calTotalAcc(obj_i);
             }
 
@@ -178,7 +213,7 @@ function init() {
     document.body.appendChild(renderer.domElement);
     document.getElementById("canvas").addEventListener("wheel", mouseZoom);
 
-    for (var i = 0; i < 500; i++) {
+    for (var i = 0; i < 50; i++) {
         //How to generate a random point within a circle of radius R:
         //https://stackoverflow.com/questions/5837572/generate-a-random-point-within-a-circle-uniformly
         let r = 500 * Math.sqrt(Math.random())
@@ -195,7 +230,7 @@ function init() {
         addObj(10e14, { x: 0, y: 0 }, { x: px, y: py }, '#FF0000');
     }
 
-    for (var i = 0; i < 1000; i++) {
+    for (var i = 0; i < 100; i++) {
         //How to generate a random point within a circle of radius R:
         //https://stackoverflow.com/questions/5837572/generate-a-random-point-within-a-circle-uniformly
         let r = 500 * Math.sqrt(Math.random())
@@ -212,6 +247,23 @@ function init() {
         addObj(10e14, { x: 0, y: 0 }, { x: px, y: py }, '#00FF00');
     }
 
+    // for (var i = 0; i < 100; i++) {
+    //     //How to generate a random point within a circle of radius R:
+    //     //https://stackoverflow.com/questions/5837572/generate-a-random-point-within-a-circle-uniformly
+    //     let r = 500 * Math.sqrt(Math.random())
+    //     let tt = Math.random() * 2 * Math.PI;
+    //     let px = 0 + r * Math.cos(tt)
+    //     let py = 0 + r * Math.sin(tt)
+
+    //     // let max = 14;
+    //     // let min = 6;
+    //     // let mss = Math.pow(10, Math.floor(Math.random() * (max - min + 1) + min));
+    //     // let v = 7 / Math.pow(px * px + py * py, 1 / 4);
+    //     // let size = Math.sqrt(px * px + py * py);
+    //     // addObj(mss, { x: v * (-py) / size, y: v * px / size }, { x: px, y: py });
+    //     addObj(10e14, { x: 0, y: 0 }, { x: px, y: py }, '#00FF00');
+    // }
+
     // addObj(1e13, { x: 0, y: 50 }, { x: -200, y: 0 });
     // addObj(1e16, { x: 0, y: 0 }, { x: 0, y: 0 }, getRandomColor(),false);
     // addObj(1e13, { x: 0, y: -50 }, { x: 100, y: 0 });
@@ -219,12 +271,6 @@ function init() {
 
     // addObj(1e16, { x: 0, y: 25 }, { x: -100, y: 0 });
     // addObj(1e16, { x: 0, y: -25 }, { x: 100, y: 0 });
-
-    //Boundary corner
-    // addObj(0, { x: 0, y: 0 }, { x: BB_width / 2 + 0.1, y: BB_height / 2 + 0.1 }, true);
-    // addObj(0, { x: 0, y: 0 }, { x: -(BB_width / 2 + 0.1), y: BB_height / 2 + 0.1 }, true);
-    // addObj(0, { x: 0, y: 0 }, { x: BB_width / 2 + 0.1, y: -(BB_height / 2 + 0.1) }, true);
-    // addObj(0, { x: 0, y: 0 }, { x: -(BB_width / 2 + 0.1), y: -(BB_height / 2 + 0.1) }, true);
 
     animate();
     window.setInterval(update, 0);
