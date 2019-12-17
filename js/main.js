@@ -19,7 +19,8 @@ let adaptive_BB = true; //Bounding box size is varies to fit all objs in the tre
 //Show or hide bounding box
 let showBoundingBox = true;
 const BBmaterial = new THREE.LineBasicMaterial({ color: 0x0000ff });
-let BBLineArr = [];
+let BBLine = new THREE.Line(new THREE.Geometry(), BBmaterial);;
+scene.add(BBLine);
 
 //Realtime or fixed time step
 let fixed_timestep = true;
@@ -61,29 +62,29 @@ function calNewVel(obj_i, a_new) {
 }
 
 function boundingBoxGeometryUpdate(root) {
-    scene.remove(...BBLineArr);
+    scene.remove(BBLine);
 
-    BBLineArr.length = 0;
-    buildBBLineArr(root);
+    let BBgeometry = new THREE.Geometry();
+    buildBBLine(root, BBgeometry);
+    BBLine = new THREE.Line(BBgeometry, BBmaterial);
 
-    scene.add(...BBLineArr);
+    scene.add(BBLine);
 }
 
-function buildBBLineArr(root) {
-    let BBgeometry = new THREE.Geometry();
+function buildBBLine(root, BBgeometry) {
 
     BBgeometry.vertices.push(new THREE.Vector3(root.origin.x, root.origin.y, 0));
     BBgeometry.vertices.push(new THREE.Vector3(root.origin.x, root.origin.y + root.height, 0));
     BBgeometry.vertices.push(new THREE.Vector3(root.origin.x + root.width, root.origin.y + root.height, 0));
     BBgeometry.vertices.push(new THREE.Vector3(root.origin.x + root.width, root.origin.y, 0));
-
-    BBLineArr.push(new THREE.LineLoop(BBgeometry, BBmaterial));
+    BBgeometry.vertices.push(new THREE.Vector3(root.origin.x, root.origin.y, 0));
 
     if (root.children != null) {
-        buildBBLineArr(root.children.NW);
-        buildBBLineArr(root.children.NE);
-        buildBBLineArr(root.children.SW);
-        buildBBLineArr(root.children.SE);
+        buildBBLine(root.children.SW, BBgeometry);
+        buildBBLine(root.children.SE, BBgeometry);
+        buildBBLine(root.children.NE, BBgeometry);
+        buildBBLine(root.children.NW, BBgeometry);
+        BBgeometry.vertices.push(new THREE.Vector3(root.origin.x, root.origin.y, 0));
     }
 }
 
