@@ -29,6 +29,9 @@ let time_step = 10; //ms
 //Brute Force?
 let bruteForce = false;
 
+//Debug
+let debug = false;
+
 function getRandomColor() {
     var letters = '0123456789ABCDEF';
     var color = '#';
@@ -182,8 +185,11 @@ function update() {
             obj_i.acc = a_sum;
         }
     }
-    console.log(dt, (window.performance.now() - now), max_depth, BB_width, BB_height);
-    //console.log((window.performance.now()-now));  //Loop compute time
+
+    if (debug) {
+        console.log(dt, (window.performance.now() - now), max_depth, BB_width, BB_height);
+        //console.log((window.performance.now()-now));  //Loop compute time
+    }
     prev = now;
 }
 
@@ -214,39 +220,39 @@ function init() {
     document.body.appendChild(renderer.domElement);
     document.getElementById("canvas").addEventListener("wheel", mouseZoom);
 
-    for (var i = 0; i < 50; i++) {
-        //How to generate a random point within a circle of radius R:
-        //https://stackoverflow.com/questions/5837572/generate-a-random-point-within-a-circle-uniformly
-        let r = 500 * Math.sqrt(Math.random())
-        let tt = Math.random() * 2 * Math.PI;
-        let px = -1000 + r * Math.cos(tt)
-        let py = 0 + r * Math.sin(tt)
+    // for (var i = 0; i < 50; i++) {
+    //     //How to generate a random point within a circle of radius R:
+    //     //https://stackoverflow.com/questions/5837572/generate-a-random-point-within-a-circle-uniformly
+    //     let r = 500 * Math.sqrt(Math.random())
+    //     let tt = Math.random() * 2 * Math.PI;
+    //     let px = -1000 + r * Math.cos(tt)
+    //     let py = 0 + r * Math.sin(tt)
 
-        // let max = 14;
-        // let min = 6;
-        // let mss = Math.pow(10, Math.floor(Math.random() * (max - min + 1) + min));
-        // let v = 7 / Math.pow(px * px + py * py, 1 / 4);
-        // let size = Math.sqrt(px * px + py * py);
-        // addObj(mss, { x: v * (-py) / size, y: v * px / size }, { x: px, y: py });
-        addObj(10e14, { x: 0, y: 0 }, { x: px, y: py }, '#FF0000');
-    }
+    //     // let max = 14;
+    //     // let min = 6;
+    //     // let mss = Math.pow(10, Math.floor(Math.random() * (max - min + 1) + min));
+    //     // let v = 7 / Math.pow(px * px + py * py, 1 / 4);
+    //     // let size = Math.sqrt(px * px + py * py);
+    //     // addObj(mss, { x: v * (-py) / size, y: v * px / size }, { x: px, y: py });
+    //     addObj(10e14, { x: 0, y: 0 }, { x: px, y: py }, '#FF0000');
+    // }
 
-    for (var i = 0; i < 100; i++) {
-        //How to generate a random point within a circle of radius R:
-        //https://stackoverflow.com/questions/5837572/generate-a-random-point-within-a-circle-uniformly
-        let r = 500 * Math.sqrt(Math.random())
-        let tt = Math.random() * 2 * Math.PI;
-        let px = 1000 + r * Math.cos(tt)
-        let py = 0 + r * Math.sin(tt)
+    // for (var i = 0; i < 100; i++) {
+    //     //How to generate a random point within a circle of radius R:
+    //     //https://stackoverflow.com/questions/5837572/generate-a-random-point-within-a-circle-uniformly
+    //     let r = 500 * Math.sqrt(Math.random())
+    //     let tt = Math.random() * 2 * Math.PI;
+    //     let px = 1000 + r * Math.cos(tt)
+    //     let py = 0 + r * Math.sin(tt)
 
-        // let max = 14;
-        // let min = 6;
-        // let mss = Math.pow(10, Math.floor(Math.random() * (max - min + 1) + min));
-        // let v = 7 / Math.pow(px * px + py * py, 1 / 4);
-        // let size = Math.sqrt(px * px + py * py);
-        // addObj(mss, { x: v * (-py) / size, y: v * px / size }, { x: px, y: py });
-        addObj(10e14, { x: 0, y: 0 }, { x: px, y: py }, '#00FF00');
-    }
+    //     // let max = 14;
+    //     // let min = 6;
+    //     // let mss = Math.pow(10, Math.floor(Math.random() * (max - min + 1) + min));
+    //     // let v = 7 / Math.pow(px * px + py * py, 1 / 4);
+    //     // let size = Math.sqrt(px * px + py * py);
+    //     // addObj(mss, { x: v * (-py) / size, y: v * px / size }, { x: px, y: py });
+    //     addObj(10e14, { x: 0, y: 0 }, { x: px, y: py }, '#00FF00');
+    // }
 
     // for (var i = 0; i < 100; i++) {
     //     //How to generate a random point within a circle of radius R:
@@ -265,10 +271,10 @@ function init() {
     //     addObj(10e14, { x: 0, y: 0 }, { x: px, y: py }, '#00FF00');
     // }
 
-    // addObj(1e13, { x: 0, y: 50 }, { x: -200, y: 0 });
-    // addObj(1e16, { x: 0, y: 0 }, { x: 0, y: 0 }, getRandomColor(),false);
-    // addObj(1e13, { x: 0, y: -50 }, { x: 100, y: 0 });
-    // addObj(1e13, { x: 0, y: 50 }, { x: -300, y: 0 });
+    addObj(1e13, { x: 0, y: 50 }, { x: -200, y: 0 });
+    addObj(1e16, { x: 0, y: 0 }, { x: 0, y: 0 }, getRandomColor(),false);
+    addObj(1e13, { x: 0, y: -50 }, { x: 100, y: 0 });
+    addObj(1e13, { x: 0, y: 50 }, { x: -300, y: 0 });
 
     // addObj(1e16, { x: 0, y: 25 }, { x: -100, y: 0 });
     // addObj(1e16, { x: 0, y: -25 }, { x: 100, y: 0 });
