@@ -247,7 +247,7 @@ function init() {
     for (var i = 0; i < 500; i++) {
         //How to generate a random point within a circle of radius R:
         //https://stackoverflow.com/questions/5837572/generate-a-random-point-within-a-circle-uniformly
-        let r = 500 * Math.sqrt(Math.random())
+        let r = 100 * Math.sqrt(Math.random())
         let tt = Math.random() * 2 * Math.PI;
         let px = -1000 + r * Math.cos(tt)
         let py = 0 + r * Math.sin(tt)
@@ -258,13 +258,13 @@ function init() {
         // let v = 7 / Math.pow(px * px + py * py, 1 / 4);
         // let size = Math.sqrt(px * px + py * py);
         // addObj(mss, { x: v * (-py) / size, y: v * px / size }, { x: px, y: py });
-        addObj(10e14, { x: 0, y: 0 }, { x: px, y: py }, '#FF0000');
+        addObj(10e14, { x: 50, y: 50 }, { x: px, y: py }, '#FF0000');
     }
 
     for (var i = 0; i < 1000; i++) {
         //How to generate a random point within a circle of radius R:
         //https://stackoverflow.com/questions/5837572/generate-a-random-point-within-a-circle-uniformly
-        let r = 500 * Math.sqrt(Math.random())
+        let r = 200 * Math.sqrt(Math.random())
         let tt = Math.random() * 2 * Math.PI;
         let px = 1000 + r * Math.cos(tt)
         let py = 0 + r * Math.sin(tt)
@@ -275,7 +275,7 @@ function init() {
         // let v = 7 / Math.pow(px * px + py * py, 1 / 4);
         // let size = Math.sqrt(px * px + py * py);
         // addObj(mss, { x: v * (-py) / size, y: v * px / size }, { x: px, y: py });
-        addObj(10e14, { x: 0, y: 0 }, { x: px, y: py }, '#00FF00');
+        addObj(10e14, { x: -50, y: -50 }, { x: px, y: py }, '#00FF00');
     }
 
 
