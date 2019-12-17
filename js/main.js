@@ -12,9 +12,14 @@ var renderer = new THREE.WebGLRenderer();
 renderer.setSize(window.innerWidth, window.innerHeight);
 
 //Boundary for BNTree
+let adaptive_BB = true; //Bounding box size is varies to fit all objs in the tree.
 let BB_width = window.innerWidth;
 let BB_height = window.innerHeight;
-let adaptive_BB = true; //Bounding box size is varies to fit all objs in the tree.
+let BB_origin = { x: -BB_width / 2, y: -BB_height / 2 };
+let BB_x_min = BB_origin.x;
+let BB_x_max = BB_origin.x + BB_width;
+let BB_y_min = BB_origin.y;
+let BB_y_max = BB_origin.y + BB_height;
 
 //Show or hide bounding box
 let showBoundingBox = true;
@@ -62,6 +67,10 @@ function calNewVel(obj_i, a_new) {
     let i_pos = obj_i.mesh.position;
 
     return { x: obj_i.vel.x + 0.5 * (obj_i.acc.x + a_new.x) * dt, y: obj_i.vel.y + 0.5 * (obj_i.acc.y + a_new.y) * dt };
+}
+
+function inBoundingBox(pos) {
+    return pos.x >= BB_x_min && pos.x <= BB_x_max && pos.y >= BB_y_min && pos.y <= BB_y_max;
 }
 
 function boundingBoxGeometryUpdate(root) {
@@ -121,27 +130,40 @@ function update() {
 
     if (!bruteForce) {
         if (adaptive_BB) {
-            BB_width = 0;
-            BB_height = 0;
+            BB_x_min = Number.MAX_VALUE;
+            BB_x_max = -Number.MAX_VALUE;
+            BB_y_min = Number.MAX_VALUE;
+            BB_y_max = -Number.MAX_VALUE;
+
             for (var i = 0; i < objList.length; i++) {
                 let obj_i = objList[i]
                 let i_pos = obj_i.mesh.position
-                if (2 * Math.abs(i_pos.x) > BB_width) {
-                    BB_width = 2 * Math.abs(i_pos.x);
+                if (i_pos.x < BB_x_min) {
+                    BB_x_min = i_pos.x;
                 }
-                if (2 * Math.abs(i_pos.y) > BB_height) {
-                    BB_height = 2 * Math.abs(i_pos.y);
+                if (i_pos.x > BB_x_max) {
+                    BB_x_max = i_pos.x;
+                }
+                if (i_pos.y < BB_y_min) {
+                    BB_y_min = i_pos.y;
+                }
+                if (i_pos.y > BB_y_max) {
+                    BB_y_max = i_pos.y;
                 }
             }
+            //console.log(BB_x_min, BB_x_max, BB_y_min, BB_y_max)
+            BB_width = BB_x_max - BB_x_min;
+            BB_height = BB_y_max - BB_y_min;
+            BB_origin = { x: BB_x_min, y: BB_y_min }
         }
 
         //Build tree
         var max_depth = 0; //For finding tree depth
-        var root = new BNTree({ x: -BB_width / 2, y: -BB_height / 2 }, BB_width, BB_height, 0);
+        var root = new BNTree(BB_origin, BB_width, BB_height, 0);
         for (var i = 0; i < objList.length; i++) {
             let obj = objList[i];
             let pos = obj.mesh.position;
-            if (pos.x >= -BB_width / 2 && pos.x <= BB_width / 2 && pos.y >= -BB_height / 2 && pos.y <= BB_height / 2) {
+            if (inBoundingBox(pos)) {
                 let depth = root.insertObj(objList[i]);
                 if (depth > max_depth) {
                     max_depth = depth;
@@ -213,6 +235,11 @@ function mouseZoom(e) {
         renderer.getSize(s);
         BB_width = Math.max(camera.right - camera.left, s.x);
         BB_height = Math.max(camera.top - camera.bottom, s.y);
+        BB_origin = { x: -BB_width / 2, y: -BB_height / 2 };
+        BB_x_min = BB_origin.x;
+        BB_x_max = BB_origin.x + BB_width;
+        BB_y_min = BB_origin.y;
+        BB_y_max = BB_origin.y + BB_height;
     }
 }
 
@@ -220,41 +247,46 @@ function init() {
     document.body.appendChild(renderer.domElement);
     document.getElementById("canvas").addEventListener("wheel", mouseZoom);
 
-    // for (var i = 0; i < 50; i++) {
-    //     //How to generate a random point within a circle of radius R:
-    //     //https://stackoverflow.com/questions/5837572/generate-a-random-point-within-a-circle-uniformly
-    //     let r = 500 * Math.sqrt(Math.random())
-    //     let tt = Math.random() * 2 * Math.PI;
-    //     let px = -1000 + r * Math.cos(tt)
-    //     let py = 0 + r * Math.sin(tt)
+    // 2 galaxies example
+    for (var i = 0; i < 500; i++) {
+        //How to generate a random point within a circle of radius R:
+        //https://stackoverflow.com/questions/5837572/generate-a-random-point-within-a-circle-uniformly
+        let r = 500 * Math.sqrt(Math.random())
+        let tt = Math.random() * 2 * Math.PI;
+        let px = -1000 + r * Math.cos(tt)
+        let py = 0 + r * Math.sin(tt)
 
-    //     // let max = 14;
-    //     // let min = 6;
-    //     // let mss = Math.pow(10, Math.floor(Math.random() * (max - min + 1) + min));
-    //     // let v = 7 / Math.pow(px * px + py * py, 1 / 4);
-    //     // let size = Math.sqrt(px * px + py * py);
-    //     // addObj(mss, { x: v * (-py) / size, y: v * px / size }, { x: px, y: py });
-    //     addObj(10e14, { x: 0, y: 0 }, { x: px, y: py }, '#FF0000');
-    // }
+        // let max = 14;
+        // let min = 6;
+        // let mss = Math.pow(10, Math.floor(Math.random() * (max - min + 1) + min));
+        // let v = 7 / Math.pow(px * px + py * py, 1 / 4);
+        // let size = Math.sqrt(px * px + py * py);
+        // addObj(mss, { x: v * (-py) / size, y: v * px / size }, { x: px, y: py });
+        addObj(10e14, { x: 0, y: 0 }, { x: px, y: py }, '#FF0000');
+    }
 
-    // for (var i = 0; i < 100; i++) {
-    //     //How to generate a random point within a circle of radius R:
-    //     //https://stackoverflow.com/questions/5837572/generate-a-random-point-within-a-circle-uniformly
-    //     let r = 500 * Math.sqrt(Math.random())
-    //     let tt = Math.random() * 2 * Math.PI;
-    //     let px = 1000 + r * Math.cos(tt)
-    //     let py = 0 + r * Math.sin(tt)
+    for (var i = 0; i < 1000; i++) {
+        //How to generate a random point within a circle of radius R:
+        //https://stackoverflow.com/questions/5837572/generate-a-random-point-within-a-circle-uniformly
+        let r = 500 * Math.sqrt(Math.random())
+        let tt = Math.random() * 2 * Math.PI;
+        let px = 1000 + r * Math.cos(tt)
+        let py = 0 + r * Math.sin(tt)
 
-    //     // let max = 14;
-    //     // let min = 6;
-    //     // let mss = Math.pow(10, Math.floor(Math.random() * (max - min + 1) + min));
-    //     // let v = 7 / Math.pow(px * px + py * py, 1 / 4);
-    //     // let size = Math.sqrt(px * px + py * py);
-    //     // addObj(mss, { x: v * (-py) / size, y: v * px / size }, { x: px, y: py });
-    //     addObj(10e14, { x: 0, y: 0 }, { x: px, y: py }, '#00FF00');
-    // }
+        // let max = 14;
+        // let min = 6;
+        // let mss = Math.pow(10, Math.floor(Math.random() * (max - min + 1) + min));
+        // let v = 7 / Math.pow(px * px + py * py, 1 / 4);
+        // let size = Math.sqrt(px * px + py * py);
+        // addObj(mss, { x: v * (-py) / size, y: v * px / size }, { x: px, y: py });
+        addObj(10e14, { x: 0, y: 0 }, { x: px, y: py }, '#00FF00');
+    }
 
-    // for (var i = 0; i < 100; i++) {
+
+
+
+    // Random particle distribution in circle
+    // for (var i = 0; i < 1000; i++) {
     //     //How to generate a random point within a circle of radius R:
     //     //https://stackoverflow.com/questions/5837572/generate-a-random-point-within-a-circle-uniformly
     //     let r = 500 * Math.sqrt(Math.random())
@@ -268,14 +300,20 @@ function init() {
     //     // let v = 7 / Math.pow(px * px + py * py, 1 / 4);
     //     // let size = Math.sqrt(px * px + py * py);
     //     // addObj(mss, { x: v * (-py) / size, y: v * px / size }, { x: px, y: py });
-    //     addObj(10e14, { x: 0, y: 0 }, { x: px, y: py }, '#00FF00');
+    //     addObj(10e14, { x: 0, y: 0 }, { x: px, y: py }, getRandomColor());
     // }
 
-    addObj(1e13, { x: 0, y: 50 }, { x: -200, y: 0 });
-    addObj(1e16, { x: 0, y: 0 }, { x: 0, y: 0 }, getRandomColor(),false);
-    addObj(1e13, { x: 0, y: -50 }, { x: 100, y: 0 });
-    addObj(1e13, { x: 0, y: 50 }, { x: -300, y: 0 });
 
+
+    // Sonar system(?) example
+    // addObj(1e13, { x: 0, y: 50 }, { x: -200, y: 0 });
+    // addObj(1e16, { x: 0, y: 0 }, { x: 0, y: 0 }, getRandomColor(), false);
+    // addObj(1e13, { x: 0, y: -50 }, { x: 100, y: 0 });
+    // addObj(1e13, { x: 0, y: 50 }, { x: -300, y: 0 });
+
+
+    
+    //2 Bodies example
     // addObj(1e16, { x: 0, y: 25 }, { x: -100, y: 0 });
     // addObj(1e16, { x: 0, y: -25 }, { x: 100, y: 0 });
 
