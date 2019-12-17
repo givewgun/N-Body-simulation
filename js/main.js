@@ -1,3 +1,11 @@
+//Simulation Option
+let adaptive_BB = true; //Bounding box size is dynamic to fit all objs in the tree.
+let showBoundingBox = true; //Show or hide bounding box
+let fixed_timestep = true; //Realtime or fixed time step
+let time_step = 10; //ms //timestep duration
+let bruteForce = false; //Calculation method. Brute force or not(Barnes hut)
+let debug = false; //Debug mode
+
 var objList = [];
 const G = 6.674 * 0.00000000001
 var scene = new THREE.Scene();
@@ -12,7 +20,6 @@ var renderer = new THREE.WebGLRenderer();
 renderer.setSize(window.innerWidth, window.innerHeight);
 
 //Boundary for BNTree
-let adaptive_BB = true; //Bounding box size is varies to fit all objs in the tree.
 let BB_width = window.innerWidth;
 let BB_height = window.innerHeight;
 let BB_origin = { x: -BB_width / 2, y: -BB_height / 2 };
@@ -21,21 +28,10 @@ let BB_x_max = BB_origin.x + BB_width;
 let BB_y_min = BB_origin.y;
 let BB_y_max = BB_origin.y + BB_height;
 
-//Show or hide bounding box
-let showBoundingBox = true;
+//Bounding box visualization
 const BBmaterial = new THREE.LineBasicMaterial({ color: 0x0000ff });
 let BBLine = new THREE.Line(new THREE.Geometry(), BBmaterial);;
 scene.add(BBLine);
-
-//Realtime or fixed time step
-let fixed_timestep = true;
-let time_step = 10; //ms
-
-//Brute Force?
-let bruteForce = false;
-
-//Debug
-let debug = false;
 
 function getRandomColor() {
     var letters = '0123456789ABCDEF';
