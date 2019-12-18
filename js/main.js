@@ -4,7 +4,7 @@ let showBoundingBox = true; //Show or hide bounding box
 let fixed_timestep = true; //Realtime or fixed time step
 let time_step = 10; //ms //timestep duration
 let bruteForce = false; //Calculation method. Brute force or not(Barnes hut)
-let debug = false; //Debug mode
+let debug = true; //Debug mode
 
 var objList = [];
 const G = 6.674 * 0.00000000001
@@ -280,11 +280,15 @@ function onDocumentKeyDown(event){
     }
     if(keyCode == 192){
         console.log('switch');
-        sceneNum = (sceneNum+1)%2;
-        objList.splice(0, objList.length);
+        sceneNum = (sceneNum+1)%3;
+        objList.length = 0;
         clearThree(scene);
         scene = new THREE.Scene();
-        init(sceneNum);
+        dt = 0;
+        now = window.performance.now();
+        prev = null;
+        window.clearInterval(update);
+        init();
     }
 }
 
@@ -292,13 +296,13 @@ function onDocumentKeyDown(event){
 function init() {
     document.body.appendChild(renderer.domElement);
     document.getElementById("canvas").addEventListener("wheel", mouseZoom);
-    document.addEventListener("keydown", onDocumentKeyDown, false)
-    console.log('HEYYOOOO' + sceneNum)
+    document.addEventListener("keydown", onDocumentKeyDown, false);
 
     if(sceneNum == 0){
         //2 Bodies example
         addObj(1e16, { x: 0, y: 25 }, { x: -100, y: 0 });
         addObj(1e16, { x: 0, y: -25 }, { x: 100, y: 0 });
+        console.log(objList)
     }
     else if(sceneNum == 1){
         // Sonar system(?) example
@@ -309,7 +313,7 @@ function init() {
     }
     else{
         // 2 galaxies example
-        for (var i = 0; i < 200; i++) {
+        for (var i = 0; i < 300; i++) {
             //How to generate a random point within a circle of radius R:
             //https://stackoverflow.com/questions/5837572/generate-a-random-point-within-a-circle-uniformly
             let r = 100 * Math.sqrt(Math.random())
@@ -326,7 +330,7 @@ function init() {
             addObj(10e14, { x: 50, y: 50 }, { x: px, y: py }, '#FF0000');
         }
 
-        for (var i = 0; i < 500; i++) {
+        for (var i = 0; i < 700; i++) {
             //How to generate a random point within a circle of radius R:
             //https://stackoverflow.com/questions/5837572/generate-a-random-point-within-a-circle-uniformly
             let r = 200 * Math.sqrt(Math.random())
@@ -343,6 +347,7 @@ function init() {
             addObj(10e14, { x: -50, y: -50 }, { x: px, y: py }, '#00FF00');
         }
     }
+    
 
     
 
