@@ -34,6 +34,7 @@ let BBLine = new THREE.Line(new THREE.Geometry(), BBmaterial);;
 scene.add(BBLine);
 
 let sceneNum = 0;
+var interval;
 
 function getRandomColor() {
     var letters = '0123456789ABCDEF';
@@ -287,7 +288,6 @@ function onDocumentKeyDown(event){
         dt = 0;
         now = window.performance.now();
         prev = null;
-        window.clearInterval(update);
         init();
     }
 }
@@ -374,5 +374,6 @@ function init() {
 
 
     animate();
-    window.setInterval(update, 0);
+    clearInterval(interval);
+    interval = window.setInterval(update, 0);
 }
