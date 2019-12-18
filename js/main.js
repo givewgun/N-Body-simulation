@@ -33,6 +33,8 @@ const BBmaterial = new THREE.LineBasicMaterial({ color: 0x0000ff });
 let BBLine = new THREE.Line(new THREE.Geometry(), BBmaterial);;
 scene.add(BBLine);
 
+let sceneNum = 0;
+
 function getRandomColor() {
     var letters = '0123456789ABCDEF';
     var color = '#';
@@ -239,44 +241,110 @@ function mouseZoom(e) {
     }
 }
 
+function clearThree(obj){
+    if (obj !== null)
+        {
+            for (var i = 0; i < obj.children.length; i++)
+            {
+                clearThree(obj.children[i]);
+            }
+            if (obj.geometry)
+            {
+                obj.geometry.dispose();
+                obj.geometry = `undefined`;
+            }
+            if (obj.material)
+            {
+                if (obj.material.map)
+                {
+                    obj.material.map.dispose();
+                    obj.material.map = undefined;
+                }
+                obj.material.dispose();
+                obj.material = undefined;
+            }
+            console.log('clear')
+        }
+        obj = undefined;
+    
+  }   
+
+function onDocumentKeyDown(event){
+    var keyCode = event.which;
+    if(keyCode == 66){
+        showBoundingBox = !showBoundingBox;
+        scene.remove(BBLine);
+    }
+    if(keyCode == 82){
+        fixed_timestep = !fixed_timestep;
+    }
+    if(keyCode == 192){
+        console.log('switch');
+        sceneNum = (sceneNum+1)%2;
+        objList.splice(0, objList.length);
+        clearThree(scene);
+        scene = new THREE.Scene();
+        init(sceneNum);
+    }
+}
+
+
 function init() {
     document.body.appendChild(renderer.domElement);
     document.getElementById("canvas").addEventListener("wheel", mouseZoom);
+    document.addEventListener("keydown", onDocumentKeyDown, false)
+    console.log('HEYYOOOO' + sceneNum)
 
-    // 2 galaxies example
-    for (var i = 0; i < 500; i++) {
-        //How to generate a random point within a circle of radius R:
-        //https://stackoverflow.com/questions/5837572/generate-a-random-point-within-a-circle-uniformly
-        let r = 100 * Math.sqrt(Math.random())
-        let tt = Math.random() * 2 * Math.PI;
-        let px = -1000 + r * Math.cos(tt)
-        let py = 0 + r * Math.sin(tt)
+    if(sceneNum == 0){
+        //2 Bodies example
+        addObj(1e16, { x: 0, y: 25 }, { x: -100, y: 0 });
+        addObj(1e16, { x: 0, y: -25 }, { x: 100, y: 0 });
+    }
+    else if(sceneNum == 1){
+        // Sonar system(?) example
+        addObj(1e13, { x: 0, y: 50 }, { x: -200, y: 0 });
+        addObj(1e16, { x: 0, y: 0 }, { x: 0, y: 0 }, getRandomColor(), false);
+        addObj(1e13, { x: 0, y: -50 }, { x: 100, y: 0 });
+        addObj(1e13, { x: 0, y: 50 }, { x: -300, y: 0 });
+    }
+    else{
+        // 2 galaxies example
+        for (var i = 0; i < 200; i++) {
+            //How to generate a random point within a circle of radius R:
+            //https://stackoverflow.com/questions/5837572/generate-a-random-point-within-a-circle-uniformly
+            let r = 100 * Math.sqrt(Math.random())
+            let tt = Math.random() * 2 * Math.PI;
+            let px = -1000 + r * Math.cos(tt)
+            let py = 0 + r * Math.sin(tt)
 
-        // let max = 14;
-        // let min = 6;
-        // let mss = Math.pow(10, Math.floor(Math.random() * (max - min + 1) + min));
-        // let v = 7 / Math.pow(px * px + py * py, 1 / 4);
-        // let size = Math.sqrt(px * px + py * py);
-        // addObj(mss, { x: v * (-py) / size, y: v * px / size }, { x: px, y: py });
-        addObj(10e14, { x: 50, y: 50 }, { x: px, y: py }, '#FF0000');
+            // let max = 14;
+            // let min = 6;
+            // let mss = Math.pow(10, Math.floor(Math.random() * (max - min + 1) + min));
+            // let v = 7 / Math.pow(px * px + py * py, 1 / 4);
+            // let size = Math.sqrt(px * px + py * py);
+            // addObj(mss, { x: v * (-py) / size, y: v * px / size }, { x: px, y: py });
+            addObj(10e14, { x: 50, y: 50 }, { x: px, y: py }, '#FF0000');
+        }
+
+        for (var i = 0; i < 500; i++) {
+            //How to generate a random point within a circle of radius R:
+            //https://stackoverflow.com/questions/5837572/generate-a-random-point-within-a-circle-uniformly
+            let r = 200 * Math.sqrt(Math.random())
+            let tt = Math.random() * 2 * Math.PI;
+            let px = 1000 + r * Math.cos(tt)
+            let py = 0 + r * Math.sin(tt)
+
+            // let max = 14;
+            // let min = 6;
+            // let mss = Math.pow(10, Math.floor(Math.random() * (max - min + 1) + min));
+            // let v = 7 / Math.pow(px * px + py * py, 1 / 4);
+            // let size = Math.sqrt(px * px + py * py);
+            // addObj(mss, { x: v * (-py) / size, y: v * px / size }, { x: px, y: py });
+            addObj(10e14, { x: -50, y: -50 }, { x: px, y: py }, '#00FF00');
+        }
     }
 
-    for (var i = 0; i < 1000; i++) {
-        //How to generate a random point within a circle of radius R:
-        //https://stackoverflow.com/questions/5837572/generate-a-random-point-within-a-circle-uniformly
-        let r = 200 * Math.sqrt(Math.random())
-        let tt = Math.random() * 2 * Math.PI;
-        let px = 1000 + r * Math.cos(tt)
-        let py = 0 + r * Math.sin(tt)
-
-        // let max = 14;
-        // let min = 6;
-        // let mss = Math.pow(10, Math.floor(Math.random() * (max - min + 1) + min));
-        // let v = 7 / Math.pow(px * px + py * py, 1 / 4);
-        // let size = Math.sqrt(px * px + py * py);
-        // addObj(mss, { x: v * (-py) / size, y: v * px / size }, { x: px, y: py });
-        addObj(10e14, { x: -50, y: -50 }, { x: px, y: py }, '#00FF00');
-    }
+    
 
 
 
@@ -299,19 +367,6 @@ function init() {
     //     addObj(10e14, { x: 0, y: 0 }, { x: px, y: py }, getRandomColor());
     // }
 
-
-
-    // Sonar system(?) example
-    // addObj(1e13, { x: 0, y: 50 }, { x: -200, y: 0 });
-    // addObj(1e16, { x: 0, y: 0 }, { x: 0, y: 0 }, getRandomColor(), false);
-    // addObj(1e13, { x: 0, y: -50 }, { x: 100, y: 0 });
-    // addObj(1e13, { x: 0, y: 50 }, { x: -300, y: 0 });
-
-
-    
-    //2 Bodies example
-    // addObj(1e16, { x: 0, y: 25 }, { x: -100, y: 0 });
-    // addObj(1e16, { x: 0, y: -25 }, { x: 100, y: 0 });
 
     animate();
     window.setInterval(update, 0);
