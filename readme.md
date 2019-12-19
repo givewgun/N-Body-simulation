@@ -1,4 +1,3 @@
-<!-- main.html --> 
 # N-body simulation
 
 ## Instruction
